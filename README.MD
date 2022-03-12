@@ -5,6 +5,6 @@
 
 This project will be applying a variable frequency LPF and HPF to filter out a guitar audio stream. This will involve taking a first order s-domain transfer function, and using a bilinear transformation to change it into a digital filter. An important variable to take into account is our sampling frequency which will be 44.1kHz.<br><br>
 With some work, this is what the graph of the digital vs analog filters look like:<br>
-<img src="https://i.imgur.com/uqeMbO5.jpg"><i><p style="text-align: center">Comparison of analog to digital LPF filters</p></i>
+<img src="https://i.imgur.com/uqeMbO5.jpg">
 <br><br>The difference equation for this will be:
 <br><br><b>y[n] = w0 * ( x[n] + x[n-1] ) - w1 * y[n-1] </b><br><br>Where:<ul><li>w0 = f/(f + fs/pi)</li><li>w1 = (f-fs/pi)/(f+fs/pi)</li></ul>
