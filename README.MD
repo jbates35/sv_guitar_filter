@@ -7,4 +7,4 @@ This project will be applying a variable frequency LPF and HPF to filter out a g
 With some work, this is what the graph of the digital vs analog filters look like:<br>
 <img src="https://i.imgur.com/uqeMbO5.jpg"><i>Comparison of analog to digital LPF filters</i>
 <br>The difference equation for this will be:
-<br><br><b>y[n] = w0 * ( x[n] + x[n-1] ) - w1 * y[n-1] </b><br>Where:<ul><li>w0 = f/(f + fs/pi)</li><li>w1 = (f-fs/pi)/(f+fs/pi)</li></ul>
+<br><br><b>y[n] = w0 * ( x[n] + x[n-1] ) - w1 * y[n-1] </b><br><br>Where:<ul><li>w0 = f/(f + fs/pi)</li><li>w1 = (f-fs/pi)/(f+fs/pi)</li></ul>
