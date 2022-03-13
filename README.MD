@@ -1,7 +1,7 @@
 <h1> Guitar Filter in SystemVerilog </h1>
 <br>
 <i> Jimmy Bates, Tom Kuzma</i>
-<br><h3> This project is creating a guitar filter for our final project in ELEX 7660 </h3><br><hr /><br>
+<h3> This project is creating a guitar filter for our final project in ELEX 7660 </h3><hr /><br>
 
 This project will be applying a variable frequency LPF and HPF to filter out a guitar audio stream. This will involve taking a first order s-domain transfer function, and using a bilinear transformation to change it into a digital filter. An important variable to take into account is our sampling frequency which will be 44.1kHz.<br><br>
 With some work, this is what the graph of the digital vs analog filters look like. Since it's probably not immediately clear, the x-axis is from 20Hz-20kHz.<br>
