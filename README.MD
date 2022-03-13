@@ -13,3 +13,5 @@ Now looking at the graph of the high pass filters:
 <br><br>The difference equation for this will be:
 <br><br><b>y[n] = w0 * ( x[n] - x[n-1] ) - w1 * y[n-1] </b><br><br>Where:<ul><li>w0 = (fs/pi)/(f + fs/pi)</li><li>w1 = (f-fs/pi)/(f+fs/pi)</li></ul><p>
 It should be noted that fs/pi is just a constant, which at a sample rate of 44.1kHz, will be 14037.
+<hr />
+Now that we have our equations sorted out, we can look now at the block diagram for the whole system, outside the FPGA. This is our block diagram so far to take a guitar signal and convert it to something that can be filtered and played into a speaker:<br><img src="https://i.imgur.com/pBctK4J.png">
