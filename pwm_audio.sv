@@ -31,6 +31,7 @@ module pwm_audio #(parameter N = 10) (
         buff_next = (count < duty_val);
     end
 
+
     // PWM output 
     assign pwm_out = buff;
 
