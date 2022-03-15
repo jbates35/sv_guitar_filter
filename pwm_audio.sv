@@ -3,8 +3,8 @@
 // Author: Tom Kuzma
 // March 14, 2022
 
-module pwm_audio #(parameter N = 10) (
-    input logic clk, reset_n
+module pwm_audio #(parameter N = 9) (
+    input logic clk, reset_n,
     input logic [N:0] duty_val,
     output logic pwm_out 
     );
@@ -14,7 +14,7 @@ module pwm_audio #(parameter N = 10) (
     logic buff, buff_next;
     
     // counter and output error buffer ff
-    always_ff @(posedge clik or negedge reset_n) begin
+    always_ff @(posedge clk or negedge reset_n) begin
         if (~reset_n) begin
             count <= '0;
             buff <= 1'b0;
