@@ -1,12 +1,18 @@
 /********
 adcinterface.sv
+
 Written by Jimmy Bates (A01035957)
+
 ELEX 7660-Digital System Design
 Lab 3
+
 Date created: January 20,2022
+
 Implements the state of the ADC machine
+
 code for modelsim:
 vsim work.adcinterface_tb; add wave sim:*; run -all
+
 *********/
 
 `define SCK_COUNT_MAX 'd11
@@ -79,18 +85,17 @@ module adcinterface(
     always_ff @(posedge ADC_SCK) begin  
         SPI_word_out[count] <= ADC_SDO; //Capture word coming in from SDI Out of ADC
     end
-    always_ff @(negedge ADC_SCK) begin
-        count <= count_next;    
+    always_ff @(negedge ADC_SCK, posedge reset_count) begin
+			if(reset_count)        
+				//Reset count to max value (11)
+				count <= `SCK_COUNT_MAX;
+			else
+				//Else take next value of count which is either count-1 or 0
+				count <= count_next;    
     end
 
     //update result once ADC is finished
     always_ff @(posedge word_finished) result <= SPI_word_out;
-
-    //update SPI_word_in and count when this is high
-    always_ff @(posedge reset_count) begin
-        //Reset count to max value (11)
-        count <= `SCK_COUNT_MAX;
-    end
 
     //State machine clock
     always_ff @(negedge clk, negedge reset_n) begin   
