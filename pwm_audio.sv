@@ -1,5 +1,5 @@
 // PWM Module
-// Takes an input from 0-(2^N - 1) and outputs a PWM at 97.7 kHz @ N = 10
+// Takes an input from 0-(2^N - 1) and outputs a PWM at 48.8 kHz @ N = 10
 // Author: Tom Kuzma
 // March 14, 2022
 
@@ -30,7 +30,6 @@ module pwm_audio #(parameter N = 10) (
         count_next = count + 1;
         buff_next = (count < duty_val);
     end
-
 
     // PWM output 
     assign pwm_out = buff;
