@@ -74,11 +74,9 @@ module adcinterface(
             default: ADC_SDI_next = 0;
         endcase
         
-
         //CONVST script
         if(ADC_curr == s_adc_off) ADC_CONVST_next = ~ADC_CONVST;
         else ADC_CONVST_next = 'b0;
-
     end
 
     //Take care of sck clock counting down 
@@ -86,12 +84,12 @@ module adcinterface(
         SPI_word_out[count] <= ADC_SDO; //Capture word coming in from SDI Out of ADC
     end
     always_ff @(negedge ADC_SCK, posedge reset_count) begin
-			if(reset_count)        
-				//Reset count to max value (11)
-				count <= `SCK_COUNT_MAX;
-			else
-				//Else take next value of count which is either count-1 or 0
-				count <= count_next;    
+            if(reset_count)        
+                //Reset count to max value (11)
+                count <= `SCK_COUNT_MAX;
+            else
+                //Else take next value of count which is either count-1 or 0
+                count <= count_next;    
     end
 
     //update result once ADC is finished
