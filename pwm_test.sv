@@ -6,7 +6,8 @@ module pwm_test (
     output ADC_CONVST, ADC_SCK, ADC_SDI,  // ADC interface
     input ADC_SDO,
     input logic reset_n, CLOCK_50,
-    output PWM_OUT
+    output PWM_OUT,
+    output CLOCK
     );
 
     logic [9:0] duty_val, duty_val_next;
@@ -31,9 +32,10 @@ module pwm_test (
 
     // comb logic for next duty cycle value
     always_comb begin
-        duty_val_next = adcValue >> 2;
+        duty_val_next = adcValue[11:2];
     end
 
+    assign CLOCK = clk;
 
 endmodule
 
@@ -70,7 +72,7 @@ module pll ( inclk0, c0);
 
         defparam
                 altpll_component.bandwidth_type = "AUTO",
-                altpll_component.clk0_divide_by = 25000,
+                altpll_component.clk0_divide_by = 10,
                 altpll_component.clk0_duty_cycle = 50,
                 altpll_component.clk0_multiply_by = 1,
                 altpll_component.clk0_phase_shift = "0",
