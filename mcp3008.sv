@@ -1,3 +1,16 @@
+/********
+mcp3008.sv
+
+Written by Jimmy Bates (A01035957)
+ELEX 7660-Digital System Design -Final Proj
+Date created: Mar 19,2022
+
+Implements an spi module to talk to MCP3008 chip that performs ADC on 2 potentiometers
+
+code for modelsim:
+vsim work.mcp3008_tb; add wave -r sim:/mcp3008_tb/*; run -all
+*********/
+
 `define SCLK_N 7 //Bit count of SCLK_next to create clock
 `define N 10 // Bit count of ADC
 `define CHANNELS 2 // How many channels to keep track of and poll
@@ -10,7 +23,7 @@ module mcp3008 (
     output logic SPI_OUT, // Spi output to MCP3008
     output logic SCLK, // SPI clock
     output logic CS_n, // Conversion start / Shutdown
-    output logic [`CHAN_N-1:0][`N-1:0] adc_out // Connects to top level
+    output logic [`CHAN_N:0][`N-1:0] adc_out // Connects to top level
 );
 
 logic [`SCLK_N-1:0] SCLK_count; // Clock divider for SCLK
@@ -59,10 +72,17 @@ always_comb begin
     chan_next = chan;
     spi_index_next = spi_index;
 
+    /* WHEN STATE MACHINE IS OFF (basically booted) WE NEED TO:
+        - Set CS_n_next to 0
+    */
+    if(CURR==OFF) begin
+        CS_n_next = 0;
+    end
+
     /* WHEN STATE MACHINE IS START WE NEED TO:
         - reset spi_index
     */
-    if(CURR=START) begin
+    if(CURR==START) begin
         spi_index_next = `INDEX_MAX-1;
     end
 
@@ -73,7 +93,7 @@ always_comb begin
     if(CURR==ACTIVE) begin
         spi_index_next = spi_index - 1;
         SPI_OUT = outWord[word_index][bit_index];
-        if(spi_index == ( `INDEX_MAX - 1 )) CS_n_next = 1; // Turn off SC_n
+        if(spi_index == 0) CS_n_next = 1; // Turn off SC_n
     end
 
     /* WHEN STATE MACHINE IS READY, WE NEED TO:
@@ -83,7 +103,7 @@ always_comb begin
     */
     if(CURR==READY) begin
         CS_n_next = 0; // stop conversion
-        chan_next = (chan == CHANNELS-1) ? 0 : chan+1; // increment channel
+        chan_next = (chan == `CHANNELS-1) ? 0 : chan+1; // increment channel
         adc_out_next[chan] = { inWord[1][1:0], inWord[0][7:0] }; // store word in adc_out
     end
 end
@@ -94,11 +114,13 @@ always_ff @(posedge SCLK, negedge reset_n) begin
         spi_index <= 0;
         adc_out <= 0; 
         chan <= 0;
+        CS_n <= 1;
     end else begin
         CURR <= NEXT; // Change state
         spi_index <= spi_index_next; // Increment spi bit selected
         adc_out <= adc_out_next; // Load ADC values into output of module
         chan <= chan_next; // Increment channel when cycled through\
+        CS_n <= CS_n_next; // Start conversion
     end
 end
 
