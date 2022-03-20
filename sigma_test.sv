@@ -2,7 +2,7 @@
 // Tom Kuzma
 // March 14, 2022
 
-module pwm_test (
+module sigma_test (
     output ADC_CONVST, ADC_SCK, ADC_SDI,  // ADC interface
     input ADC_SDO,
     input logic reset_n, CLOCK_50,
@@ -12,6 +12,7 @@ module pwm_test (
 
     logic [9:0] duty_val, duty_val_next;
     logic [11:0] adcValue;   // ADC result  
+    logic clk;
 
     pll pll0 ( .inclk0(CLOCK_50), .c0(clk) ) ;
 
@@ -19,7 +20,7 @@ module pwm_test (
     adcinterface adc_0(.clk, .reset_n, .chan(3'b000),.result(adcValue),.ADC_CONVST, .ADC_SCK, .ADC_SDI, .ADC_SDO);
 
     // PWM module
-    pwm_audio pwm_0 (.clk, .reset_n, .duty_val, .pwm_out(PWM_OUT));
+    sigma_delta pwm_0 (.clk, .reset_n, .ADC_in(duty_val), .pwm_out(PWM_OUT));
 
     // load pwm duty
     always_ff @(posedge clk, negedge reset_n) begin
@@ -72,7 +73,7 @@ module pll ( inclk0, c0);
 
         defparam
                 altpll_component.bandwidth_type = "AUTO",
-                altpll_component.clk0_divide_by = 10,
+                altpll_component.clk0_divide_by = 25000,
                 altpll_component.clk0_duty_cycle = 50,
                 altpll_component.clk0_multiply_by = 1,
                 altpll_component.clk0_phase_shift = "0",
@@ -128,3 +129,4 @@ module pll ( inclk0, c0);
 
 
 endmodule
+
