@@ -48,6 +48,7 @@ state_t NEXT;
 
 //Cycle through state machine
 always_comb begin : STATEMACHINE
+    NEXT = CURR;
     case (CURR)
         OFF: NEXT = START; // Start SPI after reset
         START: NEXT = ACTIVE; // Advance when CS_N gets turned off
