@@ -59,7 +59,8 @@ module audio_top (
     logic [1:0] duty_val;                       // PWM duty using audio_in
 
     // clocks
-     // TBD ////////////////////////
+    logic PLL_CLK1;                             // 50 MHz Clock??????
+    logic PLL_CLK2;                             // 300 MHz Clock
 
     // internal
     logic raw_freq_input;                       // MCP3008_2 ADC out from either channel 0 or 1
@@ -71,7 +72,7 @@ module audio_top (
     //***********************************************************************//
 
     mcp3008_audio #(.SCLK_N(4)) ADC_audio (// SCLK_N = # of bits for clock divider counter
-        .CLK50(CLOCK_50),           // Clock (MAY NEED TO BE ADJUSTED)************
+        .CLK50(PLL_CLK2),           // Divided Rate = 50 MHz/2^4 = 3.125 MHz. fs = 3.125 MHz/25 = 125 kHz
         .reset_n,                   // active low reset
         .SPI_IN(SPI_IN_AUD),        // Spi input from MCP3008_1
         .SPI_OUT(SPI_OUT_AUD),      // Spi output to MCP3008_1
@@ -81,7 +82,7 @@ module audio_top (
     );  
 
     mcp3008_audio #(.SCLK_N(4)) POT_input ( // SCLK_N = # of bits for clock divider counter
-        .CLK50(CLOCK_50),           // clock (MAY NEED TO BE ADJUSTED)**************
+        .CLK50(PLL_CLK1),           // 50 MHz Clock. Divided Rate = 50 MHz/2^4 = 3.125 MHz
         .reset_n,                   // active low reset
         .SPI_IN(SPI_IN_POT),        // Spi input from MCP3008_2
         .SPI_OUT(SPI_OUT_POT),      // Spi output to MCP3008_2
@@ -108,11 +109,45 @@ module audio_top (
     );
 
     pwm_audio #(.N(`N)) pwm (
-        .clk(CLOCK_50),             // Clock  (NEEDS TO BE ADJUSTED)**************
+        /********* MAYBE CHANGE CLOCK TO 256 MHz to get 2x ADC fs (125 kHz * 1024 * 2 = 256 MHz)*/
+        .clk(PLL_CLK2),             // 300 MHz Clock. DAC sample rate = 300 MHz/2^10 = 293 kHz
         .reset_n,                   // active low reset
         .duty_val(irr_out),         // Output value after processing
         .pwm_out(PWM_OUT)           // PWM output
     );
+
+    pll_1 pll_1_0 (
+		.refclk   (CLOCK_50),   //  refclk.clk
+		.outclk_0 (PLL_CLK1) // outclk0.clk
+	);
+	
+	pllfast2 pllfast2_0 (
+		.refclk   (FPGA_CLK1_50),   //  refclk.clk
+		.outclk_0 (PLL_CLK2) // outclk0.clk		
+	);
+
+    //***********************************************************************//
+    //  CLOCK AND SAMPLING CALCULATIONS                                      //
+    //***********************************************************************//
+    /*
+    Audio ADC In Frequency: 
+    fs_in = INPUT_CLOCK / (DIVIDER * 25)
+    fs_in = 50 MHz /(16 * 25) = 125 kHz
+
+    PWM DAC Out Frequency: 
+    Might want to match to audio in and update halfway through input sample for stability
+    fs_out = INPUT_CLOCK / 1024
+    fs_out = 300 MHz / 1024 = 292.968 kHz
+
+    Pot Input Frequency (not that important. Can go slower if we need)
+    fs_pot = INPUT_CLOCK / (DIVIDER * 25 / 2)
+    fs_pot = 50 MHz / (16 * 25 / 2) = 62.5 kHz 
+
+    */
+
+    //***********************************************************************//
+    //  LOGIC                                                                //
+    //***********************************************************************//
 
     // Select pot input
     assign raw_freq_input = FILT_TYPE? pot_in[`HPF]:pot_in[`LPF];
