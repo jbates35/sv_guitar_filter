@@ -115,7 +115,7 @@ module audio_top (
     );
 
     // Select pot input
-    assign raw_freq_input = FILT_TYPE? `HPF:`LPF;
+    assign raw_freq_input = FILT_TYPE? pot_in[`HPF]:pot_in[`LPF];
 
     // ff for storing previous values
     always_ff @(posedge clk, negedge reset_n) begin // ******* CHANGE CLOCK WHEN U KNOW WHAT ONE TO USE
