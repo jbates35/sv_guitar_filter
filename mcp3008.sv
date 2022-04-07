@@ -13,22 +13,22 @@ vsim work.mcp3008_tb; add wave -r sim:/mcp3008_tb/*; run -all
 
 `define SCLK_N 7 //Bit count of SCLK_next to create clock
 `define N 10 // Bit count of ADC
-`define CHANNELS 2 // How many channels to keep track of and poll
-`define CHAN_N 1 // How many bits are needed to keep track of channels (log_2(CHANNELS))
+//`define CHANNELS 2 // How many channels to keep track of and poll
+//`define CHAN_N $clog2(`CHANNELS) // How many bits are needed to keep track of channels (log_2(CHANNELS))
 `define INDEX_MAX 24 // How many bits are in the spi total
 
-module mcp3008 (
+module mcp3008 #(parameter CHANNELS = 2) ( 
     input logic CLK50, reset_n, // Connects from top level
     input logic SPI_IN, // Spi input from MCP3008
     output logic SPI_OUT, // Spi output to MCP3008
     output logic SCLK, // SPI clock
     output logic CS_n, // Conversion start / Shutdown
-    output logic [`CHAN_N:0][`N-1:0] adc_out // Connects to top level
+    output logic [$clog2(CHANNELS):0][`N-1:0] adc_out // Connects to top level
 );
 
 logic [`SCLK_N-1:0] SCLK_count; // Clock divider for SCLK
 logic [2:0][7:0] inWord, outWord; // Stores buffered words
-logic [`CHAN_N:0] chan, chan_next; //Keeps track of ADC channel
+logic [$clog2(CHANNELS):0] chan, chan_next; //Keeps track of ADC channel
 logic [5:0] spi_index, spi_index_next; //index that keeps track of overall sequence of SPI
 logic [3:0] bit_index; // Which bit is getting updated
 logic [1:0] word_index; // Which word is getting updated
@@ -104,7 +104,7 @@ always_comb begin
     */
     if(CURR==READY) begin
         CS_n_next = 0; // stop conversion
-        chan_next = (chan == `CHANNELS-1) ? 0 : chan+1; // increment channel
+        chan_next = (chan == CHANNELS-1) ? 0 : chan+1; // increment channel
         adc_out_next[chan] = { inWord[1][1:0], inWord[0][7:0] }; // store word in adc_out
     end
 end

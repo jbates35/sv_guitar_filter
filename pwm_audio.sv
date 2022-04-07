@@ -1,5 +1,5 @@
 // PWM Module
-// Takes an input from 0-(2^N - 1) and outputs a PWM at 48.8 kHz @ N = 10
+// Takes an input from 0-(2^N - 1) and outputs a PWM with duty cycle input
 // Author: Tom Kuzma
 // March 14, 2022
 
