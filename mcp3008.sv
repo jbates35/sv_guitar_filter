@@ -48,7 +48,6 @@ state_t NEXT;
 
 //Cycle through state machine
 always_comb begin : STATEMACHINE
-    NEXT = CURR;
     case (CURR)
         OFF: NEXT = START; // Start SPI after reset
         START: NEXT = ACTIVE; // Advance when CS_N gets turned off
@@ -72,6 +71,7 @@ always_comb begin
     adc_out_next = adc_out;
     chan_next = chan;
     spi_index_next = spi_index;
+	 SPI_OUT = 0;
 
     /* WHEN STATE MACHINE IS OFF (basically booted) WE NEED TO:
         - Set CS_n_next to 0
