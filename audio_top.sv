@@ -21,7 +21,7 @@ module audio_top (
     output [7:0] LED,       // On-Board LED's
 
     // Testing Pins
-    output GPIO[15:0]       // General testing output pins  [15:10]: GPIO_1 pysical pins 23-28
+    output [15:0]GPIO,      // General testing output pins  [15:10]: GPIO_1 pysical pins 23-28
                             //                              pin 29: 5V, pin 30: GND 
                             //                              [9:0]: GPIO_1 pysical pins 31-40 
     // Audio MCP3008_1 Pins
@@ -53,7 +53,7 @@ module audio_top (
     logic [`N-1:0] audio_adc;                   // Audio ADC conversion
     logic [0:1][`N-1:0] audio_in;               // Current and previous Digital Audio from MCP3008_1
     logic audio_valid;                          // Signals conversion is ready and stable
-    logic [$clog2(`CHANNELS-1):0][9:0] pot_adc;    // pot input MCP3008_2 Internal
+    logic [`CHANNELS - 1:0][9:0] pot_adc;       // pot input MCP3008_2 Internal
     logic pot_valid;                            // Signals conversion is ready and stable
 
     // IIR filter 
@@ -105,7 +105,7 @@ module audio_top (
 
     );
 
-    diffEq #(.N(`N)) iir (          // N = bits
+    diffEq #(.N(10)) iir (          // N = bits
         .x(audio_in[0:1]),          // two inputs, x[n] and x[n-1]
         .y(duty_val[1]),            // feedback y[n-1]
         .out(irr_out),              // output
@@ -122,7 +122,7 @@ module audio_top (
         .freq_out(freq_out)         // Converted frequency output
     );
 
-    pwm_audio #(.N(`N)) pwm (
+    pwm_audio #(.N(10)) pwm (
         .clk(PLL_CLK2),             // 300 MHz Clock. DAC sample rate = 300 MHz/2^10 = 293 kHz
         .reset_n,                   // active low reset
         .duty_val(duty_val[0]),     // duty value input after processing (audio out)
@@ -132,11 +132,13 @@ module audio_top (
 
     pll_1 pll_50MHz (
 		.refclk   (CLOCK_50),       //  refclk.clk
+        .rst(~reset_n),
 		.outclk_0 (PLL_CLK1)        // 50 MHz clock
 	);
 	
 	pllfast2 pll_300MHz (
 		.refclk   (CLOCK_50),       //  refclk.clk
+        .rst(~reset_n),
 		.outclk_0 (PLL_CLK2)        // 300 MHz clock		
 	);
 
@@ -189,7 +191,7 @@ module audio_top (
     end
 
     // Test Outputs to GPIO_1 Physical pins pins 23-28, 31-40 (skip pin 29 and 30)
-    assign GPIO = freq_out; // converted frequency
+    assign GPIO[14:0] = freq_out; // converted frequency
 
     // Monitor cutoff frequency with onboard LEDs
     assign LED[7:4] = pot_adc[1][9:6];
