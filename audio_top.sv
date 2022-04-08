@@ -53,7 +53,7 @@ module audio_top (
     logic [`N-1:0] audio_adc;                   // Audio ADC conversion
     logic [0:1][`N-1:0] audio_in;               // Current and previous Digital Audio from MCP3008_1
     logic audio_valid;                          // Signals conversion is ready and stable
-    logic [`CHANNELS - 1:0][9:0] pot_adc;       // pot input MCP3008_2 Internal
+    logic [`CHANNELS - 1:0][`N-1:0] pot_adc;       // pot input MCP3008_2 Internal
     logic pot_valid;                            // Signals conversion is ready and stable
 
     // IIR filter 
@@ -75,7 +75,7 @@ module audio_top (
 
     // internal
     logic raw_freq_input;                       // MCP3008_2 ADC out from either channel 0 or 1
-    logic irr_out;                              // Processed output from IRR Filter
+
 
 
     //***********************************************************************//
@@ -93,14 +93,14 @@ module audio_top (
         .valid(audio_valid)         // Signals conversion is ready and stable
     );  
 
-    mcp3008_audio #(.SCLK_N(4)) POT_input ( // SCLK_N = # of bits for clock divider counter
-        .CLK50(PLL_CLK1),           // Divided Rate = 50 MHz/2^5 = 1.5625 MHz. fs =  1.5625 MHz/26/2 = 30.048 kHz
+    mcp3008 #(.CHANNELS(2), .SCLK_N(7)) POT_input ( // CHANNELS = # of Channels to cycle through, SCLK_N = clock divisor count
+        .CLK50(PLL_CLK1),           // Divided Rate = 50 MHz/2^8 = 195.313 kHz. fs =  1.5625 MHz/26/2 = 30.048 kHz
         .reset_n,                   // active low reset
         .SPI_IN(SPI_IN_POT),        // Spi input from MCP3008_2
         .SPI_OUT(SPI_OUT_POT),      // Spi output to MCP3008_2
         .SCLK(SCLK_POT),            // SPI clock
         .CS_n(CS_n_POT),            // Conversion start / Shutdown
-        .adc_out(pot_adc),          // pot_adc[0] = LPF, pot_adc[1] = HPF
+        .adc_out(pot_adc[1:0]),          // pot_adc[0] = LPF, pot_adc[1] = HPF
         .valid(pot_valid)           // Signals conversion is ready and stable
 
     );
@@ -108,7 +108,7 @@ module audio_top (
     diffEq #(.N(10)) iir (          // N = bits
         .x(audio_in[0:1]),          // two inputs, x[n] and x[n-1]
         .y(duty_val[1]),            // feedback y[n-1]
-        .out(irr_out),              // output
+        .out(iir_out),              // output
         .f(freq_out),               // frequency from converter module
         .fs(fs),                    // sample frequency fs =  1.5625 MHz/26 = 60.096 kHz
         .filt_type(FILT_TYPE)       // 0 for LPF, 1 for HPF ** SET TO 1 OR 0 FOR TESTING ***
@@ -160,8 +160,8 @@ module audio_top (
     fs_out = 300 MHz / 1024 = 292.968 kHz
 
     Pot Input Frequency (not that important. Can go slower if we need)
-    fs_pot = INPUT_CLOCK / (DIVIDER * 25 / 2)
-    fs_pot = 50 MHz / (32 * 26 / 2) = 30.048 kHz 
+    fs_pot = INPUT_CLOCK / (DIVIDER * 26 / 2)
+    fs_pot = 50 MHz / (2^8 * 26 / 2) = 3.756 kHz 
 
     */
 
@@ -192,6 +192,7 @@ module audio_top (
 
     // Test Outputs to GPIO_1 Physical pins pins 23-28, 31-40 (skip pin 29 and 30)
     assign GPIO[14:0] = freq_out; // converted frequency
+    assign GPIO[15] = 1'b1; // tie unused output to 0
 
     // Monitor cutoff frequency with onboard LEDs
     assign LED[7:4] = pot_adc[1][9:6];
