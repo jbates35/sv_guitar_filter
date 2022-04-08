@@ -102,7 +102,6 @@ always_comb begin
     if(CURR==READY) begin
         CS_n_next = 0; // stop conversion
         adc_out_next = { inWord[1][1:0], inWord[0][7:0] }; // store word in adc_out
-        audio_valid = 1'b0;
     end
 end
 
