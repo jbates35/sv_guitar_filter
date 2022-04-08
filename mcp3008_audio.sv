@@ -21,7 +21,8 @@ module mcp3008_audio #(parameter SCLK_N=4) (
     output logic SPI_OUT, // Spi output to MCP3008
     output logic SCLK, // SPI clock
     output logic CS_n, // Conversion start / Shutdown
-    output logic [`N-1:0] adc_out // Connects to top level
+    output logic [`N-1:0] adc_out, // Connects to top level
+    output logic valid // Signals conversion is ready and stable
 );
 
 logic [SCLK_N-1:0] SCLK_count; // Clock divider for SCLK
@@ -101,6 +102,7 @@ always_comb begin
     if(CURR==READY) begin
         CS_n_next = 0; // stop conversion
         adc_out_next = { inWord[1][1:0], inWord[0][7:0] }; // store word in adc_out
+        audio_valid = 1'b0;
     end
 end
 
@@ -130,5 +132,8 @@ always_ff @(posedge CLK50, negedge reset_n) begin
         if(&SCLK_count) SCLK <= ~SCLK; //Toggle SPI clock
     end
 end
+
+// assign valid conversion bit
+assign valid = (CURR == START)? 1'b1:1'b0;
 
 endmodule

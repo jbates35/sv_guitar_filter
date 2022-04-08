@@ -23,7 +23,8 @@ module mcp3008 #(parameter CHANNELS = 2) (
     output logic SPI_OUT, // Spi output to MCP3008
     output logic SCLK, // SPI clock
     output logic CS_n, // Conversion start / Shutdown
-    output logic [$clog2(CHANNELS):0][`N-1:0] adc_out // Connects to top level
+    output logic [$clog2(CHANNELS):0][`N-1:0] adc_out, // Connects to top level
+    output logic valid // Signals conversion is ready and stable
 );
 
 logic [`SCLK_N-1:0] SCLK_count; // Clock divider for SCLK
@@ -137,5 +138,8 @@ always_ff @(posedge CLK50, negedge reset_n) begin
         if(&SCLK_count) SCLK <= ~SCLK; //Toggle SPI clock
     end
 end
+
+// assign valid conversion bit
+assign valid = (CURR == START)? 1'b1:1'b0;
 
 endmodule
