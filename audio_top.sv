@@ -10,14 +10,20 @@ Top level for guitar filter Final Project for ELEX 7660
 
 `define CHANNELS    2   // # of input channels for MCP3008_2
 `define N           10  // # of bits for ADC/DAC
-`define LPF         0
-`define HPF         1 
+`define LPF         0   // LPF designator
+`define HPF         1   // HPF designator
 
 module audio_top (
 
     // board pins
-    input logic reset_n, CLOCK_50, 
+    input logic reset_n,    // Right button on board
+    input CLOCK_50,         // 50 MHz internal clock
+    output [7:0] LED,       // On-Board LED's
 
+    // Testing Pins
+    output GPIO[15:0]       // General testing output pins  [15:10]: GPIO_1 pysical pins 23-28
+                            //                              pin 29: 5V, pin 30: GND 
+                            //                              [9:0]: GPIO_1 pysical pins 31-40 
     // Audio MCP3008_1 Pins
     input SPI_IN_AUD,       // SPI input from MCP3008_1     GPIO_1 physical pin 1         
     output SPI_OUT_AUD,     // SPI output from MCP3008_1    GPIO_1 physical pin 2       
@@ -30,7 +36,7 @@ module audio_top (
     output SCLK_POT,        // SPI clock                    GPIO_1 physical pin 7 
     output CS_n_POT,        // Conversion start/Shutdown    GPIO_1 physical pin 8 
 
-    output PWM_OUT          // PWM DAC output               GPIO_1 physical pin 9
+    output PWM_OUT,          // PWM DAC output               GPIO_1 physical pin 9
 
     // Switch input pin for HPF or LPF 
     input FILT_TYPE         // Switch input for HPF/LPF     GPIO_1 physical pin 10
@@ -44,23 +50,28 @@ module audio_top (
     //***********************************************************************//
 
     // ADC from MCP3008's
-    logic [0:1][`N:0] audio_in                  // Current and previous Digital Audio from MCP3008_1
-    logic [$clog2(`CHANNELS):0][9:0] pot_in;    // pot input MCP3008_2 Internal
+    logic [`N-1:0] audio_adc;                   // Audio ADC conversion
+    logic [0:1][`N-1:0] audio_in;               // Current and previous Digital Audio from MCP3008_1
+    logic audio_valid;                          // Signals conversion is ready and stable
+    logic [$clog2(`CHANNELS-1):0][9:0] pot_adc;    // pot input MCP3008_2 Internal
+    logic pot_valid;                            // Signals conversion is ready and stable
 
     // IIR filter 
-    logic [`N-1:0] iir_out,                     // output
-    logic filt_type                             // 0 for LPF, 1 for HPF 
+    logic [`N-1:0] iir_out;                     // output
+    logic filt_type;                            // 0 for LPF, 1 for HPF 
 
     // Frequency
-    logic [15:0] f,                             // frequency from pots
-    logic [16:0] fs,                            // sample frequency ******** NEEDS TO BE FIGURED OUT
+    logic [15:0] freq_out;                      // converted frequency from freq module sent to diffEq
+    logic [16:0] fs;                            // sample frequency: 60.096 kHz
 
     // PWM DAC 
-    logic [1:0] duty_val;                       // PWM duty using audio_in
+    logic [1:0][`N-1:0] duty_val;               // PWM duty after processing (audio_out)
+    logic pwm_ready;                            // PWM ready for next duty cycle
 
     // clocks
-    logic PLL_CLK1;                             // 50 MHz Clock??????
+    logic PLL_CLK1;                             // 50 MHz Clock
     logic PLL_CLK2;                             // 300 MHz Clock
+    logic clk_2MHz;                             // 2 MHz Clock
 
     // internal
     logic raw_freq_input;                       // MCP3008_2 ADC out from either channel 0 or 1
@@ -72,76 +83,83 @@ module audio_top (
     //***********************************************************************//
 
     mcp3008_audio #(.SCLK_N(4)) ADC_audio (// SCLK_N = # of bits for clock divider counter
-        .CLK50(PLL_CLK2),           // Divided Rate = 50 MHz/2^4 = 3.125 MHz. fs = 3.125 MHz/25 = 125 kHz
+        .CLK50(PLL_CLK2),           // Divided Rate = 50 MHz/2^5 = 1.5625 MHz. fs =  1.5625 MHz/26 = 60.096 kHz
         .reset_n,                   // active low reset
         .SPI_IN(SPI_IN_AUD),        // Spi input from MCP3008_1
         .SPI_OUT(SPI_OUT_AUD),      // Spi output to MCP3008_1
         .SCLK(SCLK_AUD),            // SPI clock
         .CS_n(CS_n_AUD),            // Conversion start / Shutdown
-        .adc_out(audio_in[0])       // Connects to top level
+        .adc_out(audio_adc),        // Converted output
+        .valid(audio_valid)         // Signals conversion is ready and stable
     );  
 
     mcp3008_audio #(.SCLK_N(4)) POT_input ( // SCLK_N = # of bits for clock divider counter
-        .CLK50(PLL_CLK1),           // 50 MHz Clock. Divided Rate = 50 MHz/2^4 = 3.125 MHz
+        .CLK50(PLL_CLK1),           // Divided Rate = 50 MHz/2^5 = 1.5625 MHz. fs =  1.5625 MHz/26/2 = 30.048 kHz
         .reset_n,                   // active low reset
         .SPI_IN(SPI_IN_POT),        // Spi input from MCP3008_2
         .SPI_OUT(SPI_OUT_POT),      // Spi output to MCP3008_2
         .SCLK(SCLK_POT),            // SPI clock
         .CS_n(CS_n_POT),            // Conversion start / Shutdown
-        .adc_out(pot_in)            // pot_in[0] = LPF, pot_in[1] = HPF
+        .adc_out(pot_adc),          // pot_adc[0] = LPF, pot_adc[1] = HPF
+        .valid(pot_valid)           // Signals conversion is ready and stable
+
     );
 
     diffEq #(.N(`N)) iir (          // N = bits
         .x(audio_in[0:1]),          // two inputs, x[n] and x[n-1]
         .y(duty_val[1]),            // feedback y[n-1]
         .out(irr_out),              // output
-        .f,                         // frequency from pots
-        .fs,                        // sample frequency (NEEDS TO BE FIGURED OUT) **************
-        .filt_type(FILT_TYPE)       // 0 for LPF, 1 for HPF 
+        .f(freq_out),               // frequency from converter module
+        .fs(fs),                    // sample frequency fs =  1.5625 MHz/26 = 60.096 kHz
+        .filt_type(FILT_TYPE)       // 0 for LPF, 1 for HPF ** SET TO 1 OR 0 FOR TESTING ***
     );              
 
     freqconvert #(.M(10), .N(15), .FMAX(20000), .FMIN(20)) freq
     (
-        .clk(CLOCK_50),             // Clock (MAY NEED TO BE ADJUSTED)**************
+        .clk(clk_2MHz),             // Clock 50 MHz
         .reset_n,                   // active low reset
         .adc_in(raw_freq_input),    // Raw ADC word to be converted to frequency. Depends on pin input.
-        .freq_out(f)                // Converted frequency output
+        .freq_out(freq_out)         // Converted frequency output
     );
 
     pwm_audio #(.N(`N)) pwm (
-        /********* MAYBE CHANGE CLOCK TO 256 MHz to get 2x ADC fs (125 kHz * 1024 * 2 = 256 MHz)*/
         .clk(PLL_CLK2),             // 300 MHz Clock. DAC sample rate = 300 MHz/2^10 = 293 kHz
         .reset_n,                   // active low reset
-        .duty_val(irr_out),         // Output value after processing
-        .pwm_out(PWM_OUT)           // PWM output
+        .duty_val(duty_val[0]),     // duty value input after processing (audio out)
+        .pwm_out(PWM_OUT),          // PWM output
+        .pwm_ready                  // PWM ready for next duty cycle
     );
 
-    pll_1 pll_1_0 (
-		.refclk   (CLOCK_50),   //  refclk.clk
-		.outclk_0 (PLL_CLK1) // outclk0.clk
+    pll_1 pll_50MHz (
+		.refclk   (CLOCK_50),       //  refclk.clk
+		.outclk_0 (PLL_CLK1)        // 50 MHz clock
 	);
 	
-	pllfast2 pllfast2_0 (
-		.refclk   (FPGA_CLK1_50),   //  refclk.clk
-		.outclk_0 (PLL_CLK2) // outclk0.clk		
+	pllfast2 pll_300MHz (
+		.refclk   (CLOCK_50),       //  refclk.clk
+		.outclk_0 (PLL_CLK2)        // 300 MHz clock		
 	);
+
+    clockDiv #(.DIVISOR(25)) twoMeg (
+        .clk(PLL_CLK1),             // 50 MHz reference clock
+        .divClk(clk_2MHz)           // 2 MHz clock
+    );
 
     //***********************************************************************//
     //  CLOCK AND SAMPLING CALCULATIONS                                      //
     //***********************************************************************//
     /*
     Audio ADC In Frequency: 
-    fs_in = INPUT_CLOCK / (DIVIDER * 25)
-    fs_in = 50 MHz /(16 * 25) = 125 kHz
+    fs_in = INPUT_CLOCK / (DIVIDER * 26)
+    fs_in = 50 MHz /(32 * 26) = 60.096 kHz
 
     PWM DAC Out Frequency: 
-    Might want to match to audio in and update halfway through input sample for stability
     fs_out = INPUT_CLOCK / 1024
     fs_out = 300 MHz / 1024 = 292.968 kHz
 
     Pot Input Frequency (not that important. Can go slower if we need)
     fs_pot = INPUT_CLOCK / (DIVIDER * 25 / 2)
-    fs_pot = 50 MHz / (16 * 25 / 2) = 62.5 kHz 
+    fs_pot = 50 MHz / (32 * 26 / 2) = 30.048 kHz 
 
     */
 
@@ -149,34 +167,34 @@ module audio_top (
     //  LOGIC                                                                //
     //***********************************************************************//
 
-    // Select pot input
-    assign raw_freq_input = FILT_TYPE? pot_in[`HPF]:pot_in[`LPF];
+    // Load new conversion on posedge of valid signal and shift previous
+    always_ff @(posedge audio_valid) begin
+        audio_in[1] <= audio_in[0];
+        audio_in[0] <= audio_adc;
+    end 
 
-    // ff for storing previous values
-    always_ff @(posedge clk, negedge reset_n) begin // ******* CHANGE CLOCK WHEN U KNOW WHAT ONE TO USE
-        if (~reset_n) begin
-            // figure out what to reset later
-        end
-        else begin
-            audio_in[1] <= audio_in[0];  // might need next_vals to hold until its time to shift
-            duty_val[1] <= duty_val[0];  // might need next_vals to hold until its time to shift   
-        end
+    // Send valid pot conversion to freq converter module
+    always_ff @(posedge pot_valid) raw_freq_input <= pot_adc[FILT_TYPE]; // change FILT_TYPE to HPF or LPF if testing withou input switch
 
+    // duty values get valid signal from PWM module halfway through cycle
+    always_ff @(posedge pwm_ready) begin
+        duty_val[1] <= duty_val[0];
+        duty_val[0] <= iir_out;
     end
-
-
 
     // Combinational
     always_comb begin
         // set sampling frequency for IRR logic
-        fs = 'd48000; // PLACEHOLDER
+        fs = 17'd60096; // 60.096 kHz
     end
 
+    // Test Outputs to GPIO_1 Physical pins pins 23-28, 31-40 (skip pin 29 and 30)
+    assign GPIO = freq_out; // converted frequency
 
-    endmodule
+    // Monitor cutoff frequency with onboard LEDs
+    assign LED[7:4] = pot_adc[1][9:6];
+	assign LED[3:0] = pot_adc[0][9:6];
+
+endmodule
 
 
-    // TO DO
-    // - merge other top level stuff
-    // - figure out clock syncs between modules to avoid unstable sampling
-    // - figure out sampling frequency
