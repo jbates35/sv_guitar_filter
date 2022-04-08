@@ -1,9 +1,11 @@
 /********
 mcp3008.sv
 
-Written by Jimmy Bates (A01035957)
+Written by  Jimmy Bates (A01035957)
+Edited by   Tom Kuzma (A01075531)
 ELEX 7660-Digital System Design -Final Proj
 Date created: Mar 19,2022
+Date edited: Apr 8, 2022
 
 Implements an spi module to talk to MCP3008 chip that performs ADC on 2 potentiometers
 
@@ -11,13 +13,10 @@ code for modelsim:
 vsim work.mcp3008_tb; add wave -r sim:/mcp3008_tb/*; run -all
 *********/
 
-`define SCLK_N 7 //Bit count of SCLK_next to create clock
 `define N 10 // Bit count of ADC
-//`define CHANNELS 2 // How many channels to keep track of and poll
-//`define CHAN_N $clog2(`CHANNELS) // How many bits are needed to keep track of channels (log_2(CHANNELS))
 `define INDEX_MAX 24 // How many bits are in the spi total
 
-module mcp3008 #(parameter CHANNELS = 2) ( 
+module mcp3008 #(parameter CHANNELS = 2, SCLK_N = 7) ( 
     input logic CLK50, reset_n, // Connects from top level
     input logic SPI_IN, // Spi input from MCP3008
     output logic SPI_OUT, // Spi output to MCP3008
@@ -27,13 +26,13 @@ module mcp3008 #(parameter CHANNELS = 2) (
     output logic valid // Signals conversion is ready and stable
 );
 
-logic [`SCLK_N-1:0] SCLK_count; // Clock divider for SCLK
+logic [SCLK_N-1:0] SCLK_count; // Clock divider for SCLK
 logic [2:0][7:0] inWord, outWord; // Stores buffered words
-logic [$clog2(CHANNELS):0] chan, chan_next; //Keeps track of ADC channel
+logic [$clog2(CHANNELS) - 1:0] chan, chan_next; //Keeps track of ADC channel
 logic [5:0] spi_index, spi_index_next; //index that keeps track of overall sequence of SPI
 logic [3:0] bit_index; // Which bit is getting updated
 logic [1:0] word_index; // Which word is getting updated
-logic [`CHAN_N:0][`N-1:0] adc_out_next; // Stores ADC value in
+logic [CHANNELS-1:0][`N-1:0] adc_out_next; // Stores ADC value in
 logic CS_n_next; // Turns low when SPI index is at max
 
 //Get state machine
@@ -73,6 +72,7 @@ always_comb begin
     adc_out_next = adc_out;
     chan_next = chan;
     spi_index_next = spi_index;
+    SPI_OUT = 0;
 
     /* WHEN STATE MACHINE IS OFF (basically booted) WE NEED TO:
         - Set CS_n_next to 0
