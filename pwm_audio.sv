@@ -6,7 +6,8 @@
 module pwm_audio #(parameter N = 10) (
     input logic clk, reset_n,
     input logic [N-1:0] duty_val,
-    output logic pwm_out 
+    output logic pwm_out,
+    output logic pwm_ready
     );
 
     // internal signals
@@ -40,6 +41,8 @@ module pwm_audio #(parameter N = 10) (
 
     // PWM output 
     assign pwm_out = buff;
+
+    assign pwm_ready = (count == 2**(N-1));
     
 
 endmodule
