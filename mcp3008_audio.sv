@@ -1,9 +1,11 @@
 /********
 mcp3008.sv
 
-Written by Jimmy Bates (A01035957)
+Written by  Jimmy Bates (A01035957)
+Edited by   Tom Kuzma (A01075531)
 ELEX 7660-Digital System Design -Final Proj
 Date created: Mar 19,2022
+Date edited: Apr 8, 2022
 
 Implements an spi module to talk to MCP3008 chip that performs ADC on 2 potentiometers
 
