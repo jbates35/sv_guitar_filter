@@ -1,3 +1,14 @@
+/********
+mcp3008_tb.sv
+
+Written by Tom Kuzma
+ELEX 7660-Digital System Design -Final Proj
+Date created: Mar 20,2022
+
+Implements testbench for pwm_audio module
+*********/
+
+
 module pwm_audio_tb ();
 
 parameter N = 4;
@@ -14,8 +25,6 @@ initial begin
     repeat(4) @(negedge clk);
     reset_n = 1;
 
-
-
     repeat(32) @(posedge clk);
 
     duty_val = 2;
@@ -25,7 +34,6 @@ initial begin
     duty_val = 14;
 
     repeat(32) @(posedge clk);
-
 
     $stop; 
 
