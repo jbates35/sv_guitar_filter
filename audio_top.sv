@@ -21,9 +21,9 @@ module audio_top (
     output [7:0] LED,       // On-Board LED's
 
     // Testing Pins
-    output [15:0]GPIO,      // General testing output pins  [15:10]: GPIO_1 pysical pins 23-28
+    output [15:0]GPIO,      // General testing output pins  [0:5]: GPIO_1 pysical pins 23-28
                             //                              pin 29: 5V, pin 30: GND 
-                            //                              [9:0]: GPIO_1 pysical pins 31-40 
+                            //                              [6:15]: GPIO_1 pysical pins 31-40 
     // Audio MCP3008_1 Pins
     input SPI_IN_AUD,       // SPI input from MCP3008_1     GPIO_1 physical pin 1         
     output SPI_OUT_AUD,     // SPI output from MCP3008_1    GPIO_1 physical pin 2       
@@ -83,7 +83,7 @@ module audio_top (
     //***********************************************************************//
 
     mcp3008_audio #(.SCLK_N(4)) ADC_audio (// SCLK_N = # of bits for clock divider counter
-        .CLK50(PLL_CLK2),           // Divided Rate = 50 MHz/2^5 = 1.5625 MHz. fs =  1.5625 MHz/26 = 60.096 kHz
+        .CLK50(PLL_CLK1),           // Divided Rate = 50 MHz/2^5 = 1.5625 MHz. fs =  1.5625 MHz/26 = 60.096 kHz
         .reset_n,                   // active low reset
         .SPI_IN(SPI_IN_AUD),        // Spi input from MCP3008_1
         .SPI_OUT(SPI_OUT_AUD),      // Spi output to MCP3008_1
@@ -116,7 +116,7 @@ module audio_top (
 
     freqconvert #(.M(10), .N(15), .FMAX(20000), .FMIN(20)) freq
     (
-        .clk(clk_2MHz),             // Clock 50 MHz
+        .clk(clk_2MHz),             // Clock 2 MHz
         .reset_n,                   // active low reset
         .adc_in(raw_freq_input),    // Raw ADC word to be converted to frequency. Depends on pin input.
         .freq_out(freq_out)         // Converted frequency output
@@ -192,7 +192,7 @@ module audio_top (
 
     // Test Outputs to GPIO_1 Physical pins pins 23-28, 31-40 (skip pin 29 and 30)
     assign GPIO[14:0] = freq_out; // converted frequency
-    assign GPIO[15] = 1'b1; // tie unused output to 0
+    assign GPIO[15] = audio_valid; // for audio sampling frequency measurement
 
     // Monitor cutoff frequency with onboard LEDs
     assign LED[7:4] = pot_adc[1][9:6];
