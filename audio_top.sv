@@ -66,6 +66,7 @@ module audio_top (
 
     // PWM DAC 
     logic [1:0][`N-1:0] duty_val;               // PWM duty after processing (audio_out)
+    logic [`N-1:0] pwm_send;                    // to be sent to PWM_out
     logic pwm_ready;                            // PWM ready for next duty cycle
 
     // clocks
@@ -74,7 +75,7 @@ module audio_top (
     logic clk_2MHz;                             // 2 MHz Clock
 
     // internal
-    logic raw_freq_input;                       // MCP3008_2 ADC out from either channel 0 or 1
+    logic [`N-1:0] raw_freq_input;                       // MCP3008_2 ADC out from either channel 0 or 1
 
 
 
@@ -114,7 +115,7 @@ module audio_top (
         .filt_type(FILT_TYPE)       // 0 for LPF, 1 for HPF ** SET TO 1 OR 0 FOR TESTING ***
     );              
 
-    freqconvert #(.M(10), .N(15), .FMAX(20000), .FMIN(20)) freq
+    freqconvert #(.M(10), .N(15), .FMAX(10000), .FMIN(100)) freq
     (
         .clk(clk_2MHz),             // Clock 2 MHz
         .reset_n,                   // active low reset
@@ -125,7 +126,7 @@ module audio_top (
     pwm_audio #(.N(10)) pwm (
         .clk(PLL_CLK2),             // 300 MHz Clock. DAC sample rate = 300 MHz/2^10 = 293 kHz
         .reset_n,                   // active low reset
-        .duty_val(duty_val[0]),     // duty value input after processing (audio out)
+        .duty_val(pwm_send),     // duty value input after processing (audio out)
         .pwm_out(PWM_OUT),          // PWM output
         .pwm_ready                  // PWM ready for next duty cycle
     );
@@ -142,7 +143,7 @@ module audio_top (
 		.outclk_0 (PLL_CLK2)        // 300 MHz clock		
 	);
 
-    clockDiv #(.DIVISOR(25)) twoMeg (
+    clockDiv #(.DIVISOR(500)) twoMeg (
         .clk(PLL_CLK1),             // 50 MHz reference clock
         .divClk(clk_2MHz)           // 2 MHz clock
     );
@@ -169,20 +170,21 @@ module audio_top (
     //  LOGIC                                                                //
     //***********************************************************************//
 
-    // Load new conversion on posedge of valid signal and shift previous
-    always_ff @(posedge audio_valid) begin
-        audio_in[1] <= audio_in[0];
-        audio_in[0] <= audio_adc;
-    end 
-
     // Send valid pot conversion to freq converter module
     always_ff @(posedge pot_valid) raw_freq_input <= pot_adc[FILT_TYPE]; // change FILT_TYPE to HPF or LPF if testing withou input switch
 
     // duty values get valid signal from PWM module halfway through cycle
     always_ff @(posedge pwm_ready) begin
+       pwm_send <= duty_val[0];
+    end
+
+    // Load new conversion on posedge of valid signal and shift previous
+    always_ff @(posedge audio_valid) begin
+        audio_in[1] <= audio_in[0];
+        audio_in[0] <= audio_adc;
         duty_val[1] <= duty_val[0];
         duty_val[0] <= iir_out;
-    end
+    end 
 
     // Combinational
     always_comb begin
@@ -191,12 +193,19 @@ module audio_top (
     end
 
     // Test Outputs to GPIO_1 Physical pins pins 23-28, 31-40 (skip pin 29 and 30)
-    assign GPIO[14:0] = freq_out; // converted frequency
-    assign GPIO[15] = audio_valid; // for audio sampling frequency measurement
+    assign GPIO[9:0] = audio_adc; // duty_val on pins 23-28, 31-34
+    assign GPIO[12] = PLL_CLK1; // 50 MHz clock on pin 37
+    assign GPIO[13] = PLL_CLK2; // 300 MHz clock on pin 38
+    assign GPIO[14] = pwm_ready;    // for pwm output frequency measurement on pin 39
+    assign GPIO[15] = audio_valid; // for audio sampling frequency measurement pin 40
+    assign GPIO[11] = SCLK_AUD; // tie unused pins to GND
+    assign GPIO[10] = 1'b0;
 
     // Monitor cutoff frequency with onboard LEDs
-    assign LED[7:4] = pot_adc[1][9:6];
-	assign LED[3:0] = pot_adc[0][9:6];
+    // assign LED[7:4] = pot_adc[1][9:6];
+	// assign LED[3:0] = pot_adc[0][9:6];
+
+    assign LED[7:0] = raw_freq_input[9:2];
 
 endmodule
 
