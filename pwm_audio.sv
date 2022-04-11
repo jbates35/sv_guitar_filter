@@ -42,7 +42,7 @@ module pwm_audio #(parameter N = 10) (
     // PWM output 
     assign pwm_out = buff;
 
-    assign pwm_ready = (count == 2**(N-1));
+    assign pwm_ready = (count > 2**(N-1));
     
 
 endmodule

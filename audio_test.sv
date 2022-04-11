@@ -82,12 +82,13 @@ module audio_test (
     end
 
     // Test Outputs to GPIO_1 Physical pins pins 23-28, 31-40 (skip pin 29 and 30)
-    assign GPIO[9:0] = duty_val[0]; // duty_val on pins 23-28, 31-34
+    assign GPIO[9:0] = audio_adc; // duty_val on pins 23-28, 31-34
     assign GPIO[12] = PLL_CLK1; // 50 MHz clock on pin 37
     assign GPIO[13] = PLL_CLK2; // 300 MHz clock on pin 38
     assign GPIO[14] = pwm_ready;    // for pwm output frequency measurement on pin 39
     assign GPIO[15] = audio_valid; // for audio sampling frequency measurement pin 40
-    assign GPIO[11:10] = 1'b0; // tie unused pins to GND
+    assign GPIO[11] = SCLK_AUD; // tie unused pins to GND
+    assign GPIO[10] = 1'b0;
 
 
 endmodule

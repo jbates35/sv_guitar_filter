@@ -35,7 +35,7 @@ module audio_irr_test (
 
     // ADC from MCP3008's
     logic [`N-1:0] audio_adc;                   // Audio ADC conversion
-    logic [0:1][`N-1:0] audio_in;               // Current and previous Digital Audio from MCP3008_1
+    logic [1:0][`N-1:0] audio_in;               // Current and previous Digital Audio from MCP3008_1
     logic audio_valid;                          // Signals conversion is ready and stable
 
     // IIR filter 
@@ -44,6 +44,7 @@ module audio_irr_test (
     // PWM DAC 
     logic [1:0][`N-1:0] duty_val;               // PWM duty after processing (audio_out)
     logic pwm_ready;                            // PWM ready for next duty cycle
+    logic [`N-1:0] pwm_send;                    // to be sent to PWM_out
 
     // clocks
     logic PLL_CLK1;                             // 50 MHz Clock
@@ -63,19 +64,26 @@ module audio_irr_test (
     pwm_audio #(.N(10)) pwm (
         .clk(PLL_CLK2),             // 300 MHz Clock. DAC sample rate = 300 MHz/2^10 = 293 kHz
         .reset_n,                   // active low reset
-        .duty_val(duty_val[0]),     // duty value input after processing (audio out)
+        .duty_val(pwm_send),     // duty value input after processing (audio out)
         .pwm_out(PWM_OUT),          // PWM output
         .pwm_ready                  // PWM ready for next duty cycle
     );
 
     diffEq #(.N(10)) iir (          // N = bits
-        .x(audio_in[0:1]),          // two inputs, x[n] and x[n-1]
+        .x(audio_in[1:0]),          // two inputs, x[n] and x[n-1]
         .y(duty_val[1]),            // feedback y[n-1]
         .out(iir_out),              // output
-        .f(16'h03E8),               // frequency from converter module set to 1kHz
+        .f(16'd2000),               // frequency from converter module set to 1kHz
         .fs(17'd60096),             // sample frequency fs =  1.5625 MHz/26 = 60.096 kHz
-        .filt_type(1'b0)            // 0 for LPF, 1 for HPF ** SET TO 1 OR 0 FOR TESTING ***
-    );              
+        .filt_type(1'b1)            // 0 for LPF, 1 for HPF ** SET TO 1 OR 0 FOR TESTING ***
+    );         
+
+    pll_1 pll_50MHz (
+		.refclk   (CLOCK_50),       //  refclk.clk
+        .rst(~reset_n),
+		.outclk_0 (PLL_CLK1)        // 50 MHz clock
+	);
+     
 
 	pllfast2 pll_300MHz (
 		.refclk   (CLOCK_50),       //  refclk.clk
@@ -85,22 +93,24 @@ module audio_irr_test (
 
     // duty values get valid signal from PWM module halfway through cycle
     always_ff @(posedge pwm_ready) begin
-        duty_val[1] <= duty_val[0];
-        duty_val[0] <= irr_out;
+       pwm_send <= duty_val[0];
     end
 
     // Load new conversion on posedge of valid signal and shift previous
     always_ff @(posedge audio_valid) begin
         audio_in[1] <= audio_in[0];
         audio_in[0] <= audio_adc;
+        duty_val[1] <= duty_val[0];
+        duty_val[0] <= iir_out;
     end 
 
     // Test Outputs to GPIO_1 Physical pins pins 23-28, 31-40 (skip pin 29 and 30)
-    assign GPIO[9:0] = duty_val[0]; // duty_val on pins 23-28, 31-34
+    assign GPIO[9:0] = audio_adc; // duty_val on pins 23-28, 31-34
     assign GPIO[12] = PLL_CLK1; // 50 MHz clock on pin 37
     assign GPIO[13] = PLL_CLK2; // 300 MHz clock on pin 38
     assign GPIO[14] = pwm_ready;    // for pwm output frequency measurement on pin 39
     assign GPIO[15] = audio_valid; // for audio sampling frequency measurement pin 40
-    assign GPIO[11:10] = 1'b0; // tie unused pins to GND
+    assign GPIO[11] = SCLK_AUD; // tie unused pins to GND
+    assign GPIO[10] = 1'b0;
 
 endmodule
