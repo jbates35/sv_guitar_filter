@@ -25,7 +25,7 @@ module adcinterface(
 
     // ltc2308 signals
     output logic ADC_CONVST, ADC_SCK, ADC_SDI,
-    input logic ADC_SDO
+    input logic ADC_SDO, TEST_INPUT
 );
 
     logic [`N:0] SPI_word_in, SPI_word_in_next; //If channel gets switched, need to make new word
